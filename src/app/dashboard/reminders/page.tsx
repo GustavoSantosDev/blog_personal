@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 
 interface Reminder {
@@ -14,10 +14,10 @@ interface Reminder {
 }
 
 export default function RemindersPage() {
-  const { data: session, status } = useSession()
+  const { user, loading } = useAuth()
   const router = useRouter()
   const [reminders, setReminders] = useState<Reminder[]>([])
-  const [loading, setLoading] = useState(true)
+  const [pageLoading, setPageLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
@@ -27,17 +27,17 @@ export default function RemindersPage() {
   })
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
+    if (!loading && !user) {
       router.push('/auth/signin')
     }
-  }, [status, router])
+  }, [user, loading, router])
 
   useEffect(() => {
-    if (session) {
+    if (user) {
       fetchReminders()
       requestNotificationPermission()
     }
-  }, [session])
+  }, [user])
 
   const requestNotificationPermission = () => {
     if ('Notification' in window && Notification.permission === 'default') {
@@ -56,7 +56,7 @@ export default function RemindersPage() {
     } catch (error) {
       console.error('Error fetching reminders:', error)
     } finally {
-      setLoading(false)
+      setPageLoading(false)
     }
   }
 
@@ -105,11 +105,11 @@ export default function RemindersPage() {
     }
   }
 
-  if (status === 'loading' || loading) {
+  if (loading || pageLoading) {
     return <div className="min-h-screen flex items-center justify-center">Cargando...</div>
   }
 
-  if (!session) {
+  if (!user) {
     return null
   }
 
@@ -150,7 +150,7 @@ export default function RemindersPage() {
               </div>
             </div>
             <div className="flex items-center">
-              <span className="text-gray-700 mr-4">Hola, {session.user?.name || session.user?.email}</span>
+              <span className="text-gray-700 mr-4">Hola, {user.user_metadata?.name || user.email}</span>
               <button
                 onClick={() => router.push('/api/auth/signout')}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-md text-sm font-medium"
